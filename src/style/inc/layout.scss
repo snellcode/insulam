@@ -1,0 +1,163 @@
+.container {
+  margin: 0 auto;
+  position: relative;
+  width: 100%;
+}
+
+.content-padding {
+  padding: 20px;
+}
+
+.layout {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: stretch;
+  height: 100vh;
+  width: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  position: relative;
+}
+
+.route {
+  flex-grow: 2;
+  margin: 60px auto;
+}
+
+.route.route-home {
+  padding: 0;
+  .map {
+    width: 100%;
+    height: 100%;
+  }
+}
+
+.route-error-content,
+.route.route-about {
+  padding: 20px;
+}
+
+.layout-header {
+  position: fixed;
+  top: 0;
+  width: 100%;
+  background: map-get($colors, 1);
+  color: white;
+  z-index: 100;
+  text-align: center;
+  height: 60px;
+  padding: 10px 20px;
+
+  * {
+    color: white;
+  }
+
+  h1 {
+    margin: 0;
+    line-height: 50px;
+    display: inline-block;
+    margin: 0 auto;
+    font-size: 3.5rem;
+    line-height: 1em;
+
+    a {
+      display: block;
+      text-transform: lowercase;
+      font-family: "Zen Dots", sans-serif;
+      color: white;
+    }
+  }
+
+  .menu-toggle,
+  a:hover {
+    color: map-get($colors, 4);
+  }
+
+  .menu-toggle {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    left: 0;
+    display: block;
+    width: 42px;
+    height: 35px;
+    mask: url("../assets/menu-icon.svg") no-repeat center;
+    background-color: white;
+    cursor: pointer;
+    &:hover {
+      background-color: map-get($colors, 4);
+    }
+  }
+
+  .github {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    right: 0;
+    z-index: 2;
+    background: none;
+    color: white;
+  }
+}
+
+.layout-footer {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  background: map-get($colors, 1);
+  text-align: center;
+  font-size: 1.6rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 60px;
+
+  &,
+  * {
+    color: white;
+    margin: 0;
+  }
+}
+
+.header-menu {
+  display: none;
+  transition: transform 0.3s;
+  transform: translateX(-100%);
+  position: fixed;
+  width: 100%;
+  z-index: 100;
+  top: 60px;
+  height: calc(100vh - 60px);
+  background: rgba(white, 0.7);
+  overflow: auto;
+
+  ul,
+  li {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &.animate {
+    display: block;
+  }
+
+  &.show {
+    transform: translateX(0);
+  }
+  a {
+    display: block;
+    padding: 2rem;
+    font-size: 2rem;
+    background: map-get($colors, 2);
+    color: white;
+    &:hover {
+      background-color: map-get($colors, 5);
+      color: map-get($colors, 1);
+    }
+  }
+  @media (min-width: 768px) and (orientation: landscape) {
+    max-width: 500px;
+  }
+}
