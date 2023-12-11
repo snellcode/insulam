@@ -2,6 +2,8 @@
 
 Island game made in React
 
+demo: https://insulam.got.solar/
+
 ## CLI Commands
 
 - `yarn`: Installs dependencies
