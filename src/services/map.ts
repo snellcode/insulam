@@ -475,4 +475,36 @@ export const drawGrid = async ({
         setPlayers(getPlayersWithNewPos({ newPos, current, data }));
       }
     });
+
+  if (zoom > 3) {
+    d3.select("svg")
+      .selectAll(".hexagon-coords")
+      .data(hexbin(points))
+      .enter()
+      .append("text")
+      .filter((data) => {
+        return true;
+        const [, , { tileX, tileY, current }] = data[0];
+        if (!current) {
+          return false;
+        }
+        const { x, y } = current;
+        return inTargetRange({ x, y }, { tileX, tileY });
+      })
+      .text((data) => {
+        const [, , props] = data[0];
+        const { tileX, tileY } = props;
+        return `${tileX},${tileY}`;
+      })
+      .attr("x", (data) => {
+        const [x] = data[0];
+        return x;
+      })
+      .attr("y", (data) => {
+        const [, y] = data[0];
+        return y + tileSize - 20;
+      })
+      .attr("text-anchor", "middle")
+      .style("font-size", "10px");
+  }
 };
