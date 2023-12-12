@@ -122,7 +122,7 @@ export const Map: FunctionalComponent<Props> = (props: Props) => {
   return (
     <div
       class={`map tile-size-${tileSize} ${
-        tileSize <= 7 ? "tile-size-small" : "tile-size-large"
+        tileSize <= 15 ? "tile-size-small" : "tile-size-large"
       }`}
     >
       <MapGrid loading={loading} />

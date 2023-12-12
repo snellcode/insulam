@@ -3,14 +3,12 @@ import * as d3 from "d3";
 import * as d3hexbin from "d3-hexbin";
 import $ from "cash-dom";
 import { toOdd, toArray } from "src/services/util";
-import {
-  getTileColor,
-  getTilePosition,
-  getTileColorName,
-} from "src/services/tile";
+import { getTilePosition, getTileColorName } from "src/services/tile";
+
+let IS_FIRST_ROW_EVEN = null;
 
 export const getZoomSizes = () => {
-  return [6, 9, 15, 23, 35, 61, 111];
+  return [3, 10, 20, 50, 100];
 };
 
 export const initGrid = () => {
@@ -73,210 +71,158 @@ const getImageBoxCss = ({ map, gridSizeX, gridSizeY, camera }) => {
   };
 };
 
-export const drawGrid = async ({
-  screenSize,
-  tileSize,
-  camera,
-  map,
-  zoom,
-  setCamera,
-  players,
-  setPlayers,
-}) => {
-  d3.selectAll(".hexagon").remove();
-  const [screenWidth, screenHeight] = screenSize;
-  const gridSizeX = getGridSizeX({ screenWidth, tileSize });
-  const gridSizeY = getGridSizeY({ screenHeight, tileSize });
-  const hexbin = d3hexbin.hexbin().radius(tileSize);
-  const points = [];
-  const current = players.find(({ current }) => current);
+const getPlayerImageHeight = (zoom) => {
+  switch (zoom) {
+    case 2:
+      return 30;
+    case 3:
+      return 70;
+    case 4:
+    default:
+      return 140;
+  }
+};
 
-  $(() => {
-    $(".image-box").css(getImageBoxCss({ map, gridSizeX, gridSizeY, camera }));
-  });
+const getPlayerImageWidth = (zoom) => {
+  return getPlayerImageHeight(zoom);
+};
 
-  const isTarget = ({ x, y }, { tileX, tileY }) => {
-    if (x === tileX && y === tileY) {
+const getPlayerImageCoordsX = (zoom) => {
+  switch (zoom) {
+    case 2:
+      return 2;
+    case 3:
+      return 8;
+    case 4:
+      return 15;
+    default:
+      return 0;
+  }
+};
+
+const getPlayerImageCoordsY = (zoom) => {
+  switch (zoom) {
+    case 2:
+      return 5;
+    case 3:
+      return 10;
+    case 4:
+      return 20;
+    default:
+      return 0;
+  }
+};
+
+const isTarget = ({ x, y }, { tileX, tileY }) => {
+  if (x === tileX && y === tileY) {
+    return true;
+  }
+  return false;
+};
+
+const inTargetRange = ({ x, y }, { tileX, tileY }) => {
+  if (isTarget({ x, y }, { tileX, tileY })) {
+    return false;
+  }
+
+  const isEvenRow = y % 2 === 0;
+  // 1 - directly to the left
+  // 2,3,4,5 - clockwise
+
+  if (isEvenRow) {
+    // 1
+    if (x - 1 === tileX && y === tileY) {
       return true;
     }
-    return false;
-  };
 
-  const inTargetRange = ({ x, y }, { tileX, tileY }) => {
-    if (isTarget({ x, y }, { tileX, tileY })) {
-      return false;
+    // 2
+    if (x === tileX && y - 1 === tileY) {
+      return true;
     }
 
-    const isEvenRow = y % 2 === 0;
-    // const isEvenRow = false;
-    // 1 - directly to the left
-    // 2,3,4,5 - clockwise
-
-    if (isEvenRow) {
-      // 1
-      if (x - 1 === tileX && y === tileY) {
-        return true;
-      }
-
-      // 2
-      if (x === tileX && y - 1 === tileY) {
-        return true;
-      }
-
-      // 3
-      if (x + 1 === tileX && y - 1 === tileY) {
-        return true;
-      }
-
-      // 4
-      if (x + 1 === tileX && y === tileY) {
-        return true;
-      }
-
-      // 4
-      if (x + 1 === tileX && y + 1 === tileY) {
-        return true;
-      }
-
-      // 5
-      if (x === tileX && y + 1 === tileY) {
-        return true;
-      }
-    } else {
-      // 1
-      if (x - 1 === tileX && y === tileY) {
-        return true;
-      }
-
-      // 2
-      if (x - 1 === tileX && y - 1 === tileY) {
-        return true;
-      }
-
-      // 3
-      if (x === tileX && y - 1 === tileY) {
-        return true;
-      }
-
-      // 4
-      if (x + 1 === tileX && y === tileY) {
-        return true;
-      }
-
-      // 5
-      if (x === tileX && y + 1 === tileY) {
-        return true;
-      }
-
-      // 5
-      if (x - 1 === tileX && y + 1 === tileY) {
-        return true;
-      }
+    // 3
+    if (x + 1 === tileX && y - 1 === tileY) {
+      return true;
     }
 
-    return false;
-  };
+    // 4
+    if (x + 1 === tileX && y === tileY) {
+      return true;
+    }
 
-  for (let gridY = 0; gridY < gridSizeY; gridY += 1) {
-    for (let gridX = 0; gridX < gridSizeX; gridX += 1) {
-      let x = tileSize * gridX * Math.sqrt(3);
-      if (gridY % 2 === 1) {
-        x += (tileSize * Math.sqrt(3)) / 2;
-      }
-      const y = tileSize * gridY * 1.5;
-      const { x: tileX, y: tileY } = getTilePosition({
-        gridSizeX,
-        gridSizeY,
-        camera,
-        gridX,
-        gridY,
-      });
+    // 4
+    if (x + 1 === tileX && y + 1 === tileY) {
+      return true;
+    }
 
-      const value = [get(map, `[${tileY}][${tileX}]`, 0)];
+    // 5
+    if (x === tileX && y + 1 === tileY) {
+      return true;
+    }
+  } else {
+    // 1
+    if (x - 1 === tileX && y === tileY) {
+      return true;
+    }
 
-      let player = null;
+    // 2
+    if (x - 1 === tileX && y - 1 === tileY) {
+      return true;
+    }
 
-      toArray(players).forEach((item) => {
-        if (get(item, "x") === tileX && get(item, "y") === tileY) {
-          player = item;
-        }
-      });
+    // 3
+    if (x === tileX && y - 1 === tileY) {
+      return true;
+    }
 
-      const colorName = getTileColorName(value[0]);
-      const color = getTileColor(value[0]);
+    // 4
+    if (x + 1 === tileX && y === tileY) {
+      return true;
+    }
 
-      points.push([
-        x,
-        y,
-        {
-          tileX,
-          tileY,
-          gridX,
-          gridY,
-          value,
-          color,
-          colorName,
-          player,
-          current,
-        },
-      ]);
+    // 5
+    if (x === tileX && y + 1 === tileY) {
+      return true;
+    }
+
+    // 5
+    if (x - 1 === tileX && y + 1 === tileY) {
+      return true;
     }
   }
 
-  const getPlayerImageHeight = () => {
-    switch (zoom) {
-      case 3:
-        return 28;
-      case 4:
-        return 46;
-      case 5:
-        return 75;
-      case 6:
-      default:
-        return 145;
-    }
-  };
-  const getPlayerImageWidth = () => {
-    return getPlayerImageHeight();
-  };
+  return false;
+};
 
-  const getPlayerImageCoordsX = () => {
-    switch (zoom) {
-      case 3:
-        return 5;
-      case 4:
-        return 7;
-      case 5:
-        return 10;
-      case 6:
-        return 23;
-      default:
-        return 0;
-    }
-  };
+const getSafePosition = ({ newPos, current, data }) => {
+  const [, , { colorName }] = data[0];
+  switch (colorName) {
+    case "water":
+    case "deepWater":
+    case "mountain":
+    case "highMountain":
+    case "snow":
+      return current;
+    default:
+      return newPos;
+  }
+  return newPos;
+};
 
-  const getPlayerImageCoordsY = () => {
-    switch (zoom) {
-      case 3:
-        return 5;
-      case 4:
-        return 12;
-      case 5:
-        return 20;
-      case 6:
-        return 40;
-      default:
-        return 0;
+const getPlayersWithNewPos = ({ players, newPos, current, data }) => {
+  return players.map((player) => {
+    if (get(current, "id") !== get(player, "id")) {
+      return player;
     }
-  };
 
+    return merge({}, current, getSafePosition({ newPos, current, data }));
+  });
+};
+
+const initSvg = ({ zoom }) => {
+  d3.selectAll(".hexagon").remove();
   const svg = d3.select("svg");
   const defs = svg.append("svg:defs");
-
-  svg.attr("focusable", false).on("keydown", () => {
-    console.log("svgsvgsvg");
-  });
-
   defs
     .append("pattern")
     .attr("id", `hero-${zoom}`)
@@ -284,11 +230,44 @@ export const drawGrid = async ({
     .attr("height", 1)
     .append("image")
     .attr("href", `/assets/hero.png`)
-    .attr("width", getPlayerImageWidth())
-    .attr("height", getPlayerImageHeight())
-    .attr("x", getPlayerImageCoordsX())
-    .attr("y", getPlayerImageCoordsY());
+    .attr("width", getPlayerImageWidth(zoom))
+    .attr("height", getPlayerImageHeight(zoom))
+    .attr("x", getPlayerImageCoordsX(zoom))
+    .attr("y", getPlayerImageCoordsY(zoom));
+};
 
+const setCoordsText = ({ tileSize, hexbin, points, current }) => {
+  d3.select("svg")
+    .selectAll(".hexagon.coords")
+    .data(hexbin(points))
+    .enter()
+    .append("text")
+    .filter((data) => {
+      const [, , { tileX, tileY }] = data[0];
+      if (!current) {
+        return false;
+      }
+      const { x, y } = current;
+      return inTargetRange({ x, y }, { tileX, tileY });
+    })
+    .text((data) => {
+      const [, , props] = data[0];
+      const { tileX, tileY } = props;
+      return `${tileX},${tileY}`;
+    })
+    .attr("x", (data) => {
+      const [x] = data[0];
+      return x;
+    })
+    .attr("y", (data) => {
+      const [, y] = data[0];
+      return y + tileSize - 20;
+    })
+    .attr("text-anchor", "middle")
+    .style("font-size", "16px");
+};
+
+const setBackground = ({ hexbin, points, setCamera }) => {
   const background = d3
     .select("svg")
     .append("g")
@@ -299,7 +278,27 @@ export const drawGrid = async ({
     .attr("d", (d) => {
       return `M${d.x},${d.y}${hexbin.hexagon()}`;
     });
+  background.attr("class", (data) => {
+    const [, , { colorName }] = data[0];
+    const colorClass = `color-${colorName}`;
+    return toArray(["hexagon background", colorClass]).join(" ");
+  });
+  background.on("click", (data) => {
+    const [, , props] = data[0];
+    const { tileX, tileY } = props;
+    setCamera({ x: tileX, y: toOdd(tileY) });
+  });
+};
 
+const setSprites = ({
+  setCamera,
+  players,
+  setPlayers,
+  zoom,
+  hexbin,
+  points,
+  current,
+}) => {
   const sprites = d3
     .select("svg")
     .append("g")
@@ -312,12 +311,6 @@ export const drawGrid = async ({
       return `M${d.x},${d.y}${hexbin.hexagon()}`;
     });
 
-  background.attr("class", (data) => {
-    const [, , { colorName }] = data[0];
-    const colorClass = `color-${colorName}`;
-    return toArray(["hexagon background", colorClass]).join(" ");
-  });
-
   sprites.on("click", (data) => {
     const [, , props] = data[0];
     const { tileX, tileY } = props;
@@ -325,7 +318,7 @@ export const drawGrid = async ({
   });
 
   sprites.on("contextmenu", (data) => {
-    const [, , { tileX, tileY, current }] = data[0];
+    const [, , { tileX, tileY }] = data[0];
     d3.event.preventDefault();
     const newPos = {
       x: tileX,
@@ -333,80 +326,44 @@ export const drawGrid = async ({
     };
     if (newPos) {
       setCamera({ x: get(newPos, "x"), y: toOdd(get(newPos, "y")) });
-      setPlayers(getPlayersWithNewPos({ newPos, current, data }));
+      setPlayers(getPlayersWithNewPos({ players, newPos, current, data }));
     }
   });
 
   sprites.attr("fill", (data) => {
-    const [, , { player, tileX, tileY, current }] = data[0];
+    const [, , { player, tileX, tileY }] = data[0];
     if (!current) {
       return;
     }
     const { x, y } = current;
     if (isTarget({ x, y }, { tileX, tileY })) {
-      if (zoom > 2) {
+      if (zoom > 1) {
         return `url(#${get(player, "name")}-${zoom})`;
       }
-      return "yellow";
+      return "cyan";
     }
     return "transparent";
   });
 
   sprites.attr("class", (data) => {
-    const [, , { player, tileX, tileY, current }] = data[0];
-    if (!current) {
-      return;
+    const [, , { colorName, tileX, tileY }] = data[0];
+    const colorClass = `color-${colorName}`;
+    const classes = toArray(["hexagon", colorClass]);
+    if (current) {
+      const { x, y } = current;
+      if (isTarget({ x, y }, { tileX, tileY })) {
+        classes.push(`sprite fa-fade current-player ${current.name}`);
+      }
+      if (inTargetRange({ x, y }, { tileX, tileY })) {
+        classes.push("sprite fa-fade valid-move");
+      }
     }
-    const { x, y } = current;
-    if (isTarget({ x, y }, { tileX, tileY })) {
-      return `hexagon sprite fa-fade current-player ${player.name}`;
-    }
-    if (inTargetRange({ x, y }, { tileX, tileY })) {
-      return "hexagon sprite fa-fade valid-move";
-    }
+    return classes.join(" ");
   });
 
-  const getSafePosition = ({ newPos, current, data }) => {
-    const [, , { colorName }] = data[0];
-    switch (colorName) {
-      case "water":
-      case "deepWater":
-      case "mountain":
-      case "highMountain":
-      case "snow":
-        return current;
-      default:
-        return newPos;
-    }
-    return newPos;
-  };
-
-  const getPlayersWithNewPos = ({ newPos, current, data }) => {
-    return players.map((player) => {
-      if (get(current, "id") !== get(player, "id")) {
-        return player;
-      }
-
-      return merge({}, current, getSafePosition({ newPos, current, data }));
-    });
-  };
-
   sprites
     .filter((data) => {
-      const [, , { tileX, tileY, current }] = data[0];
-      if (!current) {
-        return false;
-      }
-      const { x, y } = current;
-      return isTarget({ x, y }, { tileX, tileY });
-    })
-    .on("keypress", () => {
-      console.log("9999");
-    });
-
-  sprites
-    .filter((data) => {
-      const [, , { tileX, tileY, current }] = data[0];
+      const [, , { tileX, tileY }] = data[0];
       if (!current) {
         return false;
       }
@@ -415,12 +372,10 @@ export const drawGrid = async ({
     })
 
     .on("click", (data, index) => {
-      const [, , { current }] = data[0];
       const { x, y } = current;
       let newPos = null;
 
       const isEvenRow = y % 2 === 0;
-      // console.log("isEvenRow", camera, isEvenRow);
 
       switch (index) {
         // up + left
@@ -472,39 +427,130 @@ export const drawGrid = async ({
           break;
       }
       if (newPos) {
-        setPlayers(getPlayersWithNewPos({ newPos, current, data }));
+        setPlayers(getPlayersWithNewPos({ players, newPos, current, data }));
       }
     });
+};
 
-  if (zoom > 3) {
-    d3.select("svg")
-      .selectAll(".hexagon-coords")
-      .data(hexbin(points))
-      .enter()
-      .append("text")
-      .filter((data) => {
-        return true;
-        const [, , { tileX, tileY, current }] = data[0];
-        if (!current) {
-          return false;
-        }
-        const { x, y } = current;
-        return inTargetRange({ x, y }, { tileX, tileY });
-      })
-      .text((data) => {
-        const [, , props] = data[0];
-        const { tileX, tileY } = props;
-        return `${tileX},${tileY}`;
-      })
-      .attr("x", (data) => {
-        const [x] = data[0];
-        return x;
-      })
-      .attr("y", (data) => {
-        const [, y] = data[0];
-        return y + tileSize - 20;
-      })
-      .attr("text-anchor", "middle")
-      .style("font-size", "10px");
+const getPoints = ({
+  map,
+  tileSize,
+  camera,
+  gridSizeX,
+  gridSizeY,
+  players,
+}) => {
+  const points = [];
+
+  // preview first cell of grid to detect even vs odd
+  // not sure if there is a better way to do this,
+  // but this seems to work for now
+  for (let gridY = 0; gridY < 1; gridY += 1) {
+    for (let gridX = 0; gridX < 1; gridX += 1) {
+      const { y: tileY } = getTilePosition({
+        gridSizeX,
+        gridSizeY,
+        camera,
+        gridX,
+        gridY,
+      });
+      IS_FIRST_ROW_EVEN = tileY % 2 === 0;
+      break;
+    }
+    break;
+  }
+
+  for (let gridY = 0; gridY < gridSizeY; gridY += 1) {
+    for (let gridX = 0; gridX < gridSizeX; gridX += 1) {
+      let x = tileSize * gridX * Math.sqrt(3);
+      if (gridY % 2 === 1) {
+        x += (tileSize * Math.sqrt(3)) / 2;
+      }
+
+      const y = tileSize * gridY * 1.5;
+      const tilePos = getTilePosition({
+        gridSizeX,
+        gridSizeY,
+        camera,
+        gridX,
+        gridY,
+      });
+
+      const { x: tileX } = tilePos;
+      let { y: tileY } = tilePos;
+
+      if (IS_FIRST_ROW_EVEN) {
+        tileY = tileY + 1;
+      }
+
+      const value = get(map, `[${tileY}][${tileX}]`, 0);
+
+      const player = toArray(players).find((item) => {
+        return get(item, "x") === tileX && get(item, "y") === tileY;
+      });
+
+      const colorName = getTileColorName(value);
+
+      points.push([
+        x,
+        y,
+        {
+          tileX,
+          tileY,
+          colorName,
+          player,
+        },
+      ]);
+    }
+  }
+
+  return points;
+};
+
+export const drawGrid = async ({
+  screenSize,
+  tileSize,
+  camera,
+  map,
+  zoom,
+  setCamera,
+  players,
+  setPlayers,
+}) => {
+  const [screenWidth, screenHeight] = screenSize;
+  const gridSizeX = getGridSizeX({ screenWidth, tileSize });
+  const gridSizeY = getGridSizeY({ screenHeight, tileSize });
+  const hexbin = d3hexbin.hexbin().radius(tileSize);
+  const current = players.find(({ current }) => current);
+  $(() => {
+    $(".image-box").css(getImageBoxCss({ map, gridSizeX, gridSizeY, camera }));
+  });
+  const points = getPoints({
+    map,
+    tileSize,
+    camera,
+    gridSizeX,
+    gridSizeY,
+    players,
+  });
+  initSvg({ zoom });
+  setBackground({ hexbin, points, setCamera });
+
+  if (zoom === 0) {
+    return;
+  }
+
+  setSprites({
+    setCamera,
+    players,
+    setPlayers,
+    zoom,
+    hexbin,
+    points,
+    current,
+  });
+
+  if (zoom > 2) {
+    setCoordsText({ tileSize, hexbin, points, current });
   }
 };

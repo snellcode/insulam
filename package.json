@@ -1,10 +1,10 @@
 {
   "private": true,
   "name": "insulam",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "license": "MIT",
   "scripts": {
-    "build": "preact build --no-sw --no-esm --no-prerender",
+    "build": "preact build --no-sw --no-prerender",
     "analyze": "preact build --no-sw --no-esm --no-prerender --analyze",
     "serve": "sirv build --cors --single",
     "dev": "preact watch",

@@ -1,6 +1,9 @@
-import { FunctionalComponent, h } from "preact";
-import { TileInfo } from "src/components/tile-info";
-import { PlayerInfo } from "src/components/player-info";
+import { FunctionalComponent, h, Fragment } from "preact";
+import { useRecoilValue } from "recoil";
+import { get } from "lodash-es";
+import { stringify } from "src/services/util";
+import { playersState } from "src/services/state";
+import { getTileColor } from "src/services/tile";
 
 interface Props {
   map;
@@ -26,6 +29,17 @@ export const MapInfo: FunctionalComponent<Props> = (props: Props) => {
     onClickCenter,
     onClickMiniMap,
   } = props;
+
+  const players = useRecoilValue(playersState) as any;
+  const current = players.find(({ current }) => current);
+
+  if (!current) {
+    return <Fragment />;
+  }
+  const { x, y } = current;
+  const playerName = get(current, "name");
+  const value = get(map, `[${y}][${x}]`);
+  const color = getTileColor(value);
 
   return (
     <div class="map-info">
@@ -60,8 +74,21 @@ export const MapInfo: FunctionalComponent<Props> = (props: Props) => {
           />
         </div>
       </div>
-      <TileInfo tile={camera} map={map} />
-      <PlayerInfo />
+
+      <div class="player-info">
+        <h2>Player</h2>
+        <div>Name: {playerName}</div>
+        <pre class="code">{stringify(current)}</pre>
+      </div>
+
+      <div class="map-tile">
+        <h4>Tile: {`x: ${x}, y: ${y}`}</h4>
+        <div>
+          <div style={`background: ${color}`} class="color-sample">
+            <span>{color}</span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

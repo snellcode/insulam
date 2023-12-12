@@ -29,7 +29,11 @@ export const toArray = (value) => {
 };
 
 export const toOdd = (value) => {
-  return 2 * Math.floor(value / 2) + 1;
+  return toEven(value) + 1;
+};
+
+export const toEven = (value) => {
+  return 2 * Math.floor(value / 2);
 };
 
 export const cloneArray = (value: unknown): unknown[] => {
